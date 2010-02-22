@@ -33,13 +33,13 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 	private static final int HIDDEN_LAYER_NEURONS = 1 + (INPUT_LAYER_NEURONS + OUTPUT_LAYER_NEURONS) / 2;
 	/** The number of neurons in the Output layer. */
 	
-	private static final int TRAINING_ROWS = 400000;
+	private static final int TRAINING_ROWS = 460000;
 	/** The number of cycles to train the network. */
 	
-	private static final int TRAINING_EPOCHS = 10000;
+	private static final int TRAINING_EPOCHS = 110;
 	/** The learning rate for the network. */ 
 	
-	private static final double LEARNING_RATE = 0.6;
+	private static final double LEARNING_RATE = 0.8;
 	/** The momentum for training the network. */
 	
 	private static final double MOMENTUM = 0.3;	
@@ -57,7 +57,7 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 	private static final String DB_URL = "jdbc:jtds:sqlserver://T00506615:1433/TAC;loginTimeout=20;user=SA;password=wedd1ng04";
 	
 	/** The query to get the correct data from the database */
-	private static final String DB_QUERY = "SELECT QueryTypeID, BID0, PROFIT0, BID2, Impressions, Position, Clicks, Conversions, PROFIT2 FROM [dbo].[NNTrainingView];";
+	private static final String DB_QUERY = "SELECT QUERYTYPEID, BID0, PROFIT0, BID2, Impressions, Position, Clicks, Conversions, PROFIT2 FROM [dbo].[NNTrainingView]";
 	
 	/** The error at which to halt the training. */
 	private static final double MAX_ERROR = 0.013;
@@ -101,19 +101,19 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 	public static void main(final String[] the_args)
 	{	
 		/* The following two lines are for training the network */
-//		final AdAuctionNeuralNetwork net =new AdAuctionNeuralNetwork();		
-//		net.trainNetwork();
+		final AdAuctionNeuralNetwork net =new AdAuctionNeuralNetwork();		
+		net.trainNetwork();
 	
 		/** This section is for running a prediction */
-		final AdAuctionNeuralNetwork net = 
-		new AdAuctionNeuralNetwork("PREDICTION.SNET");
-		
-		for (double bid = 0.40; bid < 10.00; bid += 0.01)
-		{
-			//double result = net.predict(1, 0.4611, 1177.15044, 0.406956,5042, 1, 1123, 134);
-			double result = net.predict(1, 0.4611, 1177.15044, bid,5042, 1, 1123, 134);
-			System.out.println(Normalizer.scaleLinear(result, 0.0, 1.0, -5000.0, 5000.0));
-		}
+//		final AdAuctionNeuralNetwork net = 
+//		new AdAuctionNeuralNetwork("PREDICTION.SNET");
+//		
+//		for (double bid = 0.40; bid < 10.00; bid += 0.01)
+//		{
+//			//double result = net.predict(1, 0.4611, 1177.15044, 0.406956,5042, 1, 1123, 134);
+//			double result = net.predict(1, 0.4611, 1177.15044, bid,5042, 1, 1123, 134);
+//			System.out.println(Normalizer.scaleLinear(result, 0.0, 1.0, -5000.0, 5000.0));
+//		}
 	
 	}
 	
@@ -237,9 +237,9 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 //		CenterOnZeroPlugIn norm = new CenterOnZeroPlugIn();
 //		norm.setAdvancedSerieSelector("1,2,3,4");
 		
-		
+		String query = DB_QUERY ;
 		JDBCInputSynapse inputStream  = new JDBCInputSynapse(DB_DRIVER, DB_URL,
-                DB_QUERY,"1-8",1, TRAINING_ROWS,true);
+                query,"1-7",1, TRAINING_ROWS,true);
 		/** add the input synapse to the first layer. */
 		inputStream.setName("training_inputs");
 //		inputStream.addPlugIn(norm);
@@ -257,10 +257,12 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 		m.addLearner(2, "org.joone.engine.RpropLearner");
 		
 		m.setLearningMode(1);
+
+		String query = DB_QUERY;
 		
 		/** Setting of the input containing the desired response. */
 		JDBCInputSynapse prediction_data  = new JDBCInputSynapse(DB_DRIVER, DB_URL,
-                DB_QUERY,"9",1, TRAINING_ROWS, true);
+				query,"8",1, TRAINING_ROWS, true);
 		prediction_data.setName("desired_training");
 		
 		NormalizerPlugIn norm = new NormalizerPlugIn();
