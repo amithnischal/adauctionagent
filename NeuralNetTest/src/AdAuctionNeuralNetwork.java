@@ -17,11 +17,16 @@ import org.joone.engine.SigmoidLayer;
 import org.joone.engine.learning.TeachingSynapse;
 import org.joone.helpers.factory.JooneTools;
 import org.joone.io.JDBCInputSynapse;
+import org.joone.io.StreamInputSynapse;
 import org.joone.net.NeuralNet;
 import org.joone.net.NeuralNetLoader;
+import org.joone.net.NeuralNetValidator;
+import org.joone.net.NeuralValidationEvent;
+import org.joone.net.NeuralValidationListener;
+import org.joone.util.LearningSwitch;
 import org.joone.util.NormalizerPlugIn;
 
-public class AdAuctionNeuralNetwork implements NeuralNetListener 
+public class AdAuctionNeuralNetwork implements NeuralNetListener, NeuralValidationListener 
 {
 	/** The number of neurons in the input layer. */
 	private static final int INPUT_LAYER_NEURONS = 8;
@@ -36,7 +41,7 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 	private static final int TRAINING_ROWS = 460000;
 	/** The number of cycles to train the network. */
 	
-	private static final int TRAINING_EPOCHS = 110;
+	private static final int TRAINING_EPOCHS = 10000;
 	/** The learning rate for the network. */ 
 	
 	private static final double LEARNING_RATE = 0.8;
@@ -139,12 +144,26 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 	public void cicleTerminated(final NeuralNetEvent the_event) 
 	{
 		final Monitor mon = (Monitor) the_event.getSource();
-		long c = mon.getCurrentCicle();
-		/** We want to print the results every 10 epochs */
-		if (c % 10 == 0)
+		long cycle = mon.getCurrentCicle() + 1;
+		/** We want to print the results every 200 epochs */
+		if (cycle % 200 == 0)
 		{
-			System.out.println(c + " epochs remaining - RMSE = " 
-					+ mon.getGlobalError());
+			System.out.println(cycle + "Epoch #" + (mon.getTotCicles() - cycle)); 
+			System.out.println("     Training Error:" + mon.getGlobalError());
+			
+			//Creates a copy of the neural network
+			my_network.getMonitor().setExporting(true);
+			NeuralNet copy = my_network.cloneNet();
+			my_network.getMonitor().setExporting(false);
+			
+			//Cleans the old listeners
+			copy.removeAllListeners();
+			
+			//Set all the parameters for the validation
+			NeuralNetValidator validator = new NeuralNetValidator(copy);
+			validator.addValidationListener(this);
+			validator.start();
+			
 		}	
 	}
 
@@ -184,6 +203,12 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 		System.out.println("Net Stopped Error " + arg1 );
 	}
 	
+	@Override
+	public void netValidated(final NeuralValidationEvent the_event)
+	{
+		NeuralNet net = (NeuralNet) the_event.getSource();
+		System.out.println("     Validation Error: " + net.getMonitor().getGlobalError());
+	}
 	
 	private void setupMonitor()
 	{
@@ -234,15 +259,9 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 	/** Defines the input data for the neural network. */
 	private void addInput(final Layer the_input_layer)
 	{	
-//		CenterOnZeroPlugIn norm = new CenterOnZeroPlugIn();
-//		norm.setAdvancedSerieSelector("1,2,3,4");
-		
-		String query = DB_QUERY ;
-		JDBCInputSynapse inputStream  = new JDBCInputSynapse(DB_DRIVER, DB_URL,
-                query,"1-7",1, TRAINING_ROWS,true);
+		JDBCInputSynapse inputStream  = createInput(1, 7, 1, TRAINING_ROWS);
 		/** add the input synapse to the first layer. */
 		inputStream.setName("training_inputs");
-//		inputStream.addPlugIn(norm);
 		the_input_layer.addInputSynapse(inputStream);
 	}
 	
@@ -329,6 +348,54 @@ public class AdAuctionNeuralNetwork implements NeuralNetListener
 		{
 			the_exception.printStackTrace();
 		}	
+	}
+	
+	/**
+	 * 
+	 * @param the_first_row The first row of data.
+	 * @param the_last_row The last row of data.
+	 * @param the_first_col The first column of data.
+	 * @param the_last_col The last column of data.
+	 * @return a JDBCInputSynapse connection to the data source.
+	 */
+	private JDBCInputSynapse createInput(final int the_first_row, final int the_last_row, final int the_first_col, 
+			final int the_last_col)
+	{
+		JDBCInputSynapse input = new JDBCInputSynapse();
+		input.setdbURL(DB_URL);
+		input.setBuffered(true);
+		input.setdriverName(DB_DRIVER);
+		input.setSQLQuery(DB_QUERY);
+		input.setFirstRow(the_first_row);
+		input.setLastRow(the_last_row);
+		
+		if (the_first_col != the_last_col)
+		{
+			input.setAdvancedColumnSelector(the_first_col + "-" + the_last_col);
+		}
+		else
+		{
+			input.setAdvancedColumnSelector(Integer.toString(the_first_col));
+		}	
+		
+		return input;	
+	}
+	
+	/**
+	 * Builds a learning switch with synapses attached for learning and for validation.
+	 * @param the_training_synapse The Input Training Synapse.
+	 * @param the_validation_synapse The Input Validation Synapse
+	 * @return  A Learning Switch with attached synapses.
+	 */
+	private LearningSwitch createSwitch(StreamInputSynapse the_training_synapse, 
+			StreamInputSynapse the_validation_synapse)
+	{
+		LearningSwitch the_switch = new LearningSwitch();
+		the_switch.addTrainingSet(the_training_synapse);
+		the_switch.addValidationSet(the_validation_synapse);
+		
+		return the_switch;
+	
 	}
 	
 	
