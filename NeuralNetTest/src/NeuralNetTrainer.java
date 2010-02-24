@@ -1,5 +1,6 @@
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 
 import org.joone.engine.DirectSynapse;
 import org.joone.engine.Layer;
@@ -7,24 +8,26 @@ import org.joone.engine.Monitor;
 import org.joone.engine.NeuralNetEvent;
 import org.joone.engine.NeuralNetListener;
 import org.joone.net.NeuralNet;
+import org.joone.net.NeuralValidationEvent;
+import org.joone.net.NeuralValidationListener;
 
 /**
  * This is used to train the neural network based on input from the ad auction database.
  * @author John Patanian
  *
  */
-public class NeuralNetTrainer implements NeuralNetListener
+public class NeuralNetTrainer implements NeuralNetListener, NeuralValidationListener
 {
 	/** The error at which to halt the training. */
 	private static final double MAX_ERROR = 0.013;
 
 	/** The filename of the saved network configuration for training. */
-	private static final String NETWORK_FILE = "AdNetwork_TRAIN.snet";
+	private static final String TRAINING_NETWORK = "AdNetwork_TRAIN.snet";
 	
 	/** The filename of the saved network configuration for PREDICTION. */
-	private static final String PREDICT_FILE = "PREDICTION.snet";
+	private static final String PREDICTION_NETWORK = "PREDICTION.snet";
 	
-	private static final int DEFAULT_TRAINING_EPOCHS = 1000;
+	private static final int DEFAULT_TRAINING_EPOCHS = 1;
 	/** The learning rate for the network. */ 
 	
 	private static final double DEFAULT_LEARNING_RATE = 0.8;
@@ -91,10 +94,10 @@ public class NeuralNetTrainer implements NeuralNetListener
 //			my_network.getMonitor().setExporting(true);
 //			NeuralNet copy = my_network.cloneNet();
 //			my_network.getMonitor().setExporting(false);
-//			
+		
 //			//Cleans the old listeners
 //			copy.removeAllListeners();
-//			
+
 			//Set all the parameters for the validation
 /*			NeuralNetValidator validator = new NeuralNetValidator(copy);
 			validator.addValidationListener(this);
@@ -149,18 +152,23 @@ public class NeuralNetTrainer implements NeuralNetListener
 	{
 		try
 		{
-			FileOutputStream stream = new FileOutputStream(NETWORK_FILE);
-			FileOutputStream predict = new FileOutputStream(PREDICT_FILE);
-			
+			FileOutputStream stream = new FileOutputStream(TRAINING_NETWORK);
 			ObjectOutputStream out = new ObjectOutputStream(stream);
-			ObjectOutputStream predict_out = new ObjectOutputStream(predict);
+
+			
+			my_network.removeNeuralNetListener(this);
 			
 			out.writeObject(my_network);
 			out.close();
-			
+
 			configNetworkForPrediction();
-			predict_out.writeObject(my_network);
-			predict_out.close();
+
+			
+			stream = new FileOutputStream(PREDICTION_NETWORK);
+			out = new ObjectOutputStream(stream);			
+
+			out.writeObject(my_network);
+			out.close();
 		}
 		catch(final Exception the_exception)
 		{
@@ -189,6 +197,12 @@ public class NeuralNetTrainer implements NeuralNetListener
 		my_monitor.setTotCicles(1);
 		my_monitor.setTrainingPatterns(1);
 		my_monitor.setLearning(false);
+	}
+
+	@Override
+	public void netValidated(final NeuralValidationEvent the_validation_event) 
+	{
+		
 	}
 
 	

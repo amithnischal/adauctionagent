@@ -29,9 +29,8 @@ public class AdAuctionNeuralNetwork implements NeuralValidationListener
 	private static final int HIDDEN_LAYER_NEURONS = 1 + (INPUT_LAYER_NEURONS + OUTPUT_LAYER_NEURONS) / 2;
 	/** The number of neurons in the Output layer. */
 	
-	private static final int TRAINING_ROWS = 460000;
+	private static final int TRAINING_ROWS = 1000;
 	/** The number of cycles to train the network. */
-	
 		
 	/** The driver to used for database connections. */
 	private static final String DB_DRIVER = "net.sourceforge.jtds.jdbc.Driver";
