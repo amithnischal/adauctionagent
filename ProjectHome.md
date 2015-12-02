@@ -1,0 +1,1 @@
+An implementation of a neural network based Ad Agent for the TAC/AA Ad auction game.
